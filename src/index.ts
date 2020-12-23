@@ -156,8 +156,8 @@ client.on("message", async message => {
   // }
   let answers:string[] = ["MUESLI IS CRINGE", "muesli is cringe", "Muesli is cringe"]
 
-  if(message.author.id !== client.user!.id && ["meme", "muesli"].includes(message.content.toLowerCase()) || message.content.toLowerCase().includes("meme") || message.content.toLowerCase().includes("muesli")){
-    message.channel.send(answers[Math.floor(Math.random() * answers.length)])
+  if(message.author.id !== "756698066320490558" && ["meme", "muesli"].includes(message.content.toLowerCase()) || message.content.toLowerCase().includes("meme") || message.content.toLowerCase().includes("muesli")){
+    await message.channel.send(answers[Math.floor(Math.random() * answers.length)])
   }
 
   if (message.content.indexOf(process.env.PREFIX!) !== 0 || message.author.bot) {
@@ -177,6 +177,10 @@ client.on("message", async message => {
   if (command === "start") {
     if (!message.member!.roles.cache.find(x => x.name.toLowerCase().includes("mod"))) return message.reply("You don't have those premissions")
     await start(message, client)
+  }
+
+  else if(command === "ping"){
+    await message.channel.send(`🏓Latency is ${Date.now() - message.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
   }
 
   else if(command === "submit"){
