@@ -156,9 +156,7 @@ client.on("message", async message => {
   // }
   let answers:string[] = ["MUESLI IS CRINGE", "muesli is cringe", "Muesli is cringe"]
 
-  if(["meme", "muesli"].includes(message.content.toLowerCase()) 
-  || message.content.toLowerCase().includes("meme") 
-  || message.content.toLowerCase().includes("muesli")){
+  if(message.author.id !== client.user!.id && ["meme", "muesli"].includes(message.content.toLowerCase()) || message.content.toLowerCase().includes("meme") || message.content.toLowerCase().includes("muesli")){
     message.channel.send(answers[Math.floor(Math.random() * answers.length)])
   }
 
