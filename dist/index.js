@@ -127,6 +127,10 @@ client.on("messageReactionAdd", async function (messageReaction, user) {
             }
             await db_1.updateActive(match);
         }
+        else {
+            await user.send("You can't vote in your own match");
+            await messageReaction.users.remove(user.id);
+        }
     }
     ;
 });
