@@ -136,6 +136,10 @@ client.on("messageReactionAdd", async function (messageReaction, user) {
 });
 client.on("message", async (message) => {
     var _a;
+    let answers = ["MUESLI IS CRINGE", "muesli is cringe", "Muesli is cringe"];
+    if (["meme", "muesli"].includes(message.content.toLowerCase())) {
+        message.channel.send(answers[Math.floor(Math.random() * answers.length)]);
+    }
     if (message.content.indexOf(process.env.PREFIX) !== 0 || message.author.bot) {
         if (message.author.id !== "688558229646475344")
             return;
