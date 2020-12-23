@@ -138,6 +138,8 @@ client.on("message", async (message) => {
     var _a;
     let answers = ["MUESLI IS CRINGE", "muesli is cringe", "Muesli is cringe"];
     if (message.author.id !== "756698066320490558" && ["meme", "muesli"].includes(message.content.toLowerCase()) || message.content.toLowerCase().includes("meme") || message.content.toLowerCase().includes("muesli")) {
+        if (message.author.bot)
+            return;
         await message.channel.send(answers[Math.floor(Math.random() * answers.length)]);
     }
     if (message.content.indexOf(process.env.PREFIX) !== 0 || message.author.bot) {
