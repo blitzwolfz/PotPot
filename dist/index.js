@@ -62,6 +62,7 @@ client.on('ready', async () => {
     client.user.setActivity(`Let the games begin`);
 });
 client.on("messageReactionAdd", async function (messageReaction, user) {
+    var _a, _b;
     if (user.bot)
         return;
     if ((messageReaction.emoji.name === running_1.emojis[1] || messageReaction.emoji.name === running_1.emojis[0])
@@ -133,6 +134,28 @@ client.on("messageReactionAdd", async function (messageReaction, user) {
         }
     }
     ;
+    if (messageReaction.emoji.name === '🅰️' || messageReaction.emoji.name === '🅱️' && user.id !== "756698066320490558") {
+        if (messageReaction.partial)
+            await messageReaction.fetch();
+        if (messageReaction.message.partial)
+            await messageReaction.message.fetch();
+        if ((_b = (_a = user.client.guilds.cache.get(messageReaction.message.guild.id)) === null || _a === void 0 ? void 0 : _a.members.cache.get(user.id)) === null || _b === void 0 ? void 0 : _b.roles.cache.find(x => x.name.toLowerCase().includes("mod"))) {
+            if (messageReaction.emoji.name === '🅰️') {
+                let id = await (await db_1.getMatch(messageReaction.message.channel.id)).p1.userid;
+                await running_1.startsplit(messageReaction.message, client, id);
+                await messageReaction.users.remove(user.id);
+            }
+            else if (messageReaction.emoji.name === '🅱️') {
+                let id = await (await db_1.getMatch(messageReaction.message.channel.id)).p2.userid;
+                await running_1.startsplit(messageReaction.message, client, id);
+                await messageReaction.users.remove(user.id);
+            }
+        }
+        else {
+            await messageReaction.users.remove(user.id);
+            await user.send("No.");
+        }
+    }
 });
 client.on("message", async (message) => {
     var _a;
@@ -157,11 +180,27 @@ client.on("message", async (message) => {
             return message.reply("You don't have those premissions");
         await running_1.start(message, client);
     }
+    if (command === "split") {
+        if (!message.member.roles.cache.find(x => x.name.toLowerCase().includes("mod")))
+            return message.reply("You don't have those premissions");
+        await running_1.split(message, client);
+    }
+    else if (command === "end") {
+        await running_1.end(client, message.channel.id);
+    }
     else if (command === "ping") {
         await message.channel.send(`🏓Latency is ${Date.now() - message.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
     }
     else if (command === "submit") {
         await running_1.submit(message, client);
+    }
+    else if (command === "matchstats") {
+        let match = await db_1.getMatch(message.mentions.channels.first().id);
+        let c = await client.channels.fetch(match.channelid);
+        await client.channels.cache.get("789201298104123414").send(new Discord.MessageEmbed()
+            .setTitle(`${c.name}`)
+            .setColor("BLUE")
+            .addFields({ name: `${(await client.users.cache.get(match.p1.userid)).username} Meme Done:`, value: `${match.p1.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p1.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p1.memedone ? `${match.p1.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p1.donesplit ? `${match.p1.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p1.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `${(await client.users.cache.get(match.p2.userid)).username} Meme Done:`, value: `${match.p2.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p2.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p2.memedone ? `${match.p2.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p2.donesplit ? `${match.p2.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p2.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `Voting period:`, value: `${match.votingperiod ? `Yes` : `No`}`, inline: true }, { name: `Voting time:`, value: `${match.votingperiod ? `${(7200 / 60) - Math.floor((Math.floor(Date.now() / 1000) - match.votetime) / 60)} mins left` : "Voting hasn't started"}`, inline: true }));
     }
     else if (command === "cancel") {
         if (!message.member.roles.cache.find(x => x.name.toLowerCase().includes("mod")))

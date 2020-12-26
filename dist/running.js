@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emojis = exports.cancelmatch = exports.submit = exports.end = exports.start = exports.running = exports.dateBuilder = void 0;
+exports.emojis = exports.cancelmatch = exports.submit = exports.end = exports.startsplit = exports.split = exports.start = exports.running = exports.dateBuilder = void 0;
 const db_1 = require("./db");
 const discord = __importStar(require("discord.js"));
 function dateBuilder() {
@@ -234,8 +234,103 @@ async function start(message, client) {
     await user2.send(`You have 1 hour to complete your meme\nUse \`!submit\` to submit meme`);
 }
 exports.start = start;
+async function split(message, client) {
+    var args = message.content.slice("!".length).trim().split(/ +/g);
+    if (args.length < 3) {
+        return message.reply("invalid response. Command is `!start @user1 @user2 template link`\n or `!start @user1 @user2 theme description`");
+    }
+    let user1 = message.mentions.users.array()[0];
+    let user2 = message.mentions.users.array()[1];
+    let newmatch = {
+        _id: message.channel.id,
+        channelid: message.channel.id,
+        split: true,
+        exhibition: false,
+        messageID: "",
+        template: "",
+        theme: "",
+        tempfound: false,
+        p1: {
+            userid: user1.id,
+            memedone: false,
+            donesplit: false,
+            time: Math.floor(Date.now() / 1000),
+            memelink: "",
+            votes: 0,
+            voters: [],
+            halfreminder: false,
+            fivereminder: false,
+        },
+        p2: {
+            userid: user2.id,
+            memedone: false,
+            donesplit: false,
+            time: Math.floor(Date.now() / 1000),
+            memelink: "",
+            votes: 0,
+            voters: [],
+            halfreminder: false,
+            fivereminder: false,
+        },
+        votetime: Math.floor(Date.now() / 1000),
+        votingperiod: false,
+    };
+    await db_1.insertActive(newmatch);
+    let embed = new discord.MessageEmbed()
+        .setTitle(`Match between ${user1.username ? user1.username : (await message.guild.members.fetch(user1.id)).nickname} and ${user2.username ? user2.username : (await message.guild.members.fetch(user2.id)).nickname}`)
+        .setColor("#d7be26")
+        .setDescription(`<@${user1.id}> and <@${user2.id}> both have 1 hours to complete your memes.\n Contact admins if you have an issue.`)
+        .setTimestamp();
+    await message.channel.send({ embed }).then(async (message) => {
+        await message.react('🅰️');
+        await message.react('🅱️');
+    });
+}
+exports.split = split;
+async function startsplit(message, client, ...userid) {
+    let user = await client.users.fetch(userid[0] || message.mentions.users.first().id);
+    let matches = await db_1.getActive();
+    for (let match of matches) {
+        if (match.split) {
+            if (match.channelid === message.channel.id) {
+                if (user.id === match.p1.userid) {
+                    if (!(match.p1.donesplit)) {
+                        await message.channel.send(new discord.MessageEmbed()
+                            .setDescription(`<@${user.id}> your match has been split.\nYou have 1 hours to complete your memes\nUse ${`!submit`} to submit to submit each image seperately`)
+                            .setColor("#d7be26")
+                            .setTimestamp());
+                        match.p1.donesplit = true;
+                        match.p1.time = Math.floor(Date.now() / 1000);
+                        await (await client.users.fetch(match.p1.userid)).send(`Your match has been split.\nYou have 1 hours to complete your portion\nUse ${`!submit`} to submit to submit each image seperately`);
+                        await db_1.updateActive(match);
+                        return;
+                    }
+                }
+                if (user.id === match.p2.userid) {
+                    if (!(match.p2.donesplit)) {
+                        await message.channel.send(new discord.MessageEmbed()
+                            .setDescription(`<@${user.id}> your match has been split.\nYou have 1 hours to complete your memes\nUse ${`!submit`} to submit to submit each image seperately`)
+                            .setColor("#d7be26")
+                            .setTimestamp());
+                        match.p2.donesplit = true;
+                        match.p2.time = Math.floor(Date.now() / 1000);
+                        await (await client.users.fetch(match.p2.userid)).send(`Your match has been split.\nYou have 1 hours to complete your portion\nUse ${`!submit`} to submit to submit each image seperately`);
+                        await db_1.updateActive(match);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+exports.startsplit = startsplit;
 async function end(client, id) {
     let match = await db_1.getMatch(id);
+    let c = await client.channels.fetch(match.channelid);
+    await client.channels.cache.get("789201298104123414").send(new discord.MessageEmbed()
+        .setTitle(`${c.name}`)
+        .setColor("BLUE")
+        .addFields({ name: `${(await client.users.cache.get(match.p1.userid)).username} Meme Done:`, value: `${match.p1.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p1.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p1.memedone ? `${match.p1.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p1.donesplit ? `${match.p1.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p1.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `${(await client.users.cache.get(match.p2.userid)).username} Meme Done:`, value: `${match.p2.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p2.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p2.memedone ? `${match.p2.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p2.donesplit ? `${match.p2.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p2.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `Voting period:`, value: `${match.votingperiod ? `Yes` : `No`}`, inline: true }, { name: `Voting time:`, value: `${match.votingperiod ? `${(7200 / 60) - Math.floor((Math.floor(Date.now() / 1000) - match.votetime) / 60)} mins left` : "Voting hasn't started"}`, inline: true }));
     await db_1.deleteActive(match);
     console.log(match);
     let channelid = client.channels.cache.get(match.channelid);
@@ -278,24 +373,7 @@ async function end(client, id) {
             .setColor("#d7be26")
             .setDescription(`<@${user1.id}> has won with image A!\n The final votes were ${match.p1.votes} to ${match.p2.votes}`)
             .setFooter(dateBuilder());
-        if (!match.exhibition) {
-            await user1.send(`Your match is over, here is the final result. You gained 25 points for winning your match, and ${(match.p1.votes * 5)} points from your votes.`, { embed: embed });
-            await user2.send(`Your match is over, here is the final result. You gained ${(match.p2.votes * 5)} points from your votes.`, { embed: embed });
-        }
-        if (match.exhibition === false) {
-            await client.channels.cache.get("734565012378746950").send((new discord.MessageEmbed()
-                .setColor("#d7be26")
-                .setImage(match.p1.memelink)
-                .setDescription(`${(await (await channelid.guild.members.fetch(user1.id)).nickname) || await (await client.users.fetch(user1.id)).username} won with ${match.p1.votes} votes!`)
-                .setFooter(dateBuilder())));
-        }
-        else if (match.exhibition === true) {
-            await client.channels.cache.get("780774797273071626").send((new discord.MessageEmbed()
-                .setColor("#d7be26")
-                .setImage(match.p1.memelink)
-                .setDescription(`<@${user1.id}> beat <@${user2.id}>.\nThe final score was ${match.p1.votes} to ${match.p2.votes} votes!`)
-                .setFooter(dateBuilder())));
-        }
+        await channelid.send(embed);
     }
     else if (match.p1.votes < match.p2.votes) {
         let embed = new discord.MessageEmbed()
@@ -303,24 +381,7 @@ async function end(client, id) {
             .setColor("#d7be26")
             .setDescription(`<@${user2.id}> has won with image B!\n The final votes were ${match.p1.votes} to ${match.p2.votes}`)
             .setFooter(dateBuilder());
-        if (match.exhibition === false) {
-            await client.channels.cache.get("734565012378746950").send((new discord.MessageEmbed()
-                .setColor("#d7be26")
-                .setImage(match.p2.memelink)
-                .setDescription(`${(await (await channelid.guild.members.fetch(user2.id)).nickname) || await (await client.users.fetch(user2.id)).username} won with ${match.p2.votes} votes!`)
-                .setFooter(dateBuilder())));
-        }
-        else if (match.exhibition === true) {
-            await client.channels.cache.get("780774797273071626").send((new discord.MessageEmbed()
-                .setColor("#d7be26")
-                .setImage(match.p2.memelink)
-                .setDescription(`<@${user2.id}> beat <@${user1.id}>.\nThe final score was ${match.p2.votes} to ${match.p1.votes} votes!`)
-                .setFooter(dateBuilder())));
-        }
-        if (!match.exhibition) {
-            await user1.send(`Your match is over, here is the final result. You gained ${(match.p1.votes * 5)} points from your votes.`, { embed: embed });
-            await user2.send(`Your match is over, here is the final result. You gained 25 points for winning your match, and gained ${(match.p2.votes * 5)} points from your votes.`, { embed: embed });
-        }
+        await channelid.send(embed);
     }
     else if (match.p1.votes === match.p2.votes) {
         let embed = new discord.MessageEmbed()
@@ -374,6 +435,11 @@ async function submit(message, client) {
                     match.p2.time = Math.floor(Date.now() / 1000) - 3200;
                 }
                 await db_1.updateActive(match);
+                let c = await client.channels.fetch(match.channelid);
+                await client.channels.cache.get("789201298104123414").send(new discord.MessageEmbed()
+                    .setTitle(`${c.name}`)
+                    .setColor("BLUE")
+                    .addFields({ name: `${(await client.users.cache.get(match.p1.userid)).username} Meme Done:`, value: `${match.p1.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p1.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p1.memedone ? `${match.p1.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p1.donesplit ? `${match.p1.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p1.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `${(await client.users.cache.get(match.p2.userid)).username} Meme Done:`, value: `${match.p2.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p2.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p2.memedone ? `${match.p2.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p2.donesplit ? `${match.p2.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p2.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `Voting period:`, value: `${match.votingperiod ? `Yes` : `No`}`, inline: true }, { name: `Voting time:`, value: `${match.votingperiod ? `${(7200 / 60) - Math.floor((Math.floor(Date.now() / 1000) - match.votetime) / 60)} mins left` : "Voting hasn't started"}`, inline: true }));
                 return;
             }
             if ((match.p2.userid === message.author.id) && !match.p2.memedone && !match.p2.memelink.length) {
@@ -397,6 +463,11 @@ async function submit(message, client) {
                     match.p2.time = Math.floor(Date.now() / 1000) - 3200;
                 }
                 await db_1.updateActive(match);
+                let c = await client.channels.fetch(match.channelid);
+                await client.channels.cache.get("789201298104123414").send(new discord.MessageEmbed()
+                    .setTitle(`${c.name}`)
+                    .setColor("BLUE")
+                    .addFields({ name: `${(await client.users.cache.get(match.p1.userid)).username} Meme Done:`, value: `${match.p1.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p1.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p1.memedone ? `${match.p1.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p1.donesplit ? `${match.p1.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p1.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: 'Votes', value: `${match.p1.votes}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `${(await client.users.cache.get(match.p2.userid)).username} Meme Done:`, value: `${match.p2.memedone ? `Yes` : `No`}`, inline: true }, { name: 'Match Portion Done:', value: `${match.p2.donesplit ? `${match.split ? `Yes` : `Not a split match`}` : `No`}`, inline: true }, { name: 'Meme Link:', value: `${match.p2.memedone ? `${match.p2.memelink}` : `No meme submitted yet`}`, inline: true }, { name: 'Time left', value: `${match.p2.donesplit ? `${match.p2.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p2.time) / 60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up`}`}`, inline: true }, { name: 'Votes', value: `${match.p2.votes}`, inline: true }, { name: '\u200B', value: '\u200B' }, { name: `Voting period:`, value: `${match.votingperiod ? `Yes` : `No`}`, inline: true }, { name: `Voting time:`, value: `${match.votingperiod ? `${(7200 / 60) - Math.floor((Math.floor(Date.now() / 1000) - match.votetime) / 60)} mins left` : "Voting hasn't started"}`, inline: true }));
                 return;
             }
         }

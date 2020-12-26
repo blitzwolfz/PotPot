@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
 import { connectToDB, getActive, getMatch, updateActive } from "./db";
-import { cancelmatch, running, start, submit, emojis } from "./running";
+import { cancelmatch, running, start, submit, emojis, split, startsplit, end } from "./running";
 import { activematch } from "./struct";
 require("dotenv").config();
 
@@ -143,6 +143,39 @@ client.on("messageReactionAdd", async function (messageReaction, user) {
         }
 
     };
+
+    if (messageReaction.emoji.name === '🅰️' || messageReaction.emoji.name === '🅱️' && user.id !== "756698066320490558") {
+      //messageReaction.message.channel.send(user.client.guilds.cache.get(messageReaction.message.guild!.id)!.roles.cache.has("719936221572235295"))
+  
+      if (messageReaction.partial) await messageReaction.fetch();
+      if (messageReaction.message.partial) await messageReaction.message.fetch();
+  
+      if (user.client.guilds.cache.get(messageReaction!.message!.guild!.id!)?.members.cache.get(user.id!)?.roles.cache.find(x => x.name.toLowerCase().includes("mod"))){
+  
+        if (messageReaction.emoji.name === '🅰️') {
+  
+          let id = await (await getMatch(messageReaction.message.channel.id)).p1.userid
+          await startsplit(messageReaction.message, client, id)
+          await messageReaction.users.remove(user.id)
+  
+        }
+  
+        else if (messageReaction.emoji.name === '🅱️') {
+  
+          let id = await (await getMatch(messageReaction.message.channel.id)).p2.userid
+          await startsplit(messageReaction.message, client, id)
+          await messageReaction.users.remove(user.id)
+  
+        }
+      }
+  
+      else {
+        await messageReaction.users.remove(user.id)
+        await user.send("No.")
+      }
+  
+  
+    }
 });
 
 client.on("message", async message => {
@@ -180,12 +213,61 @@ client.on("message", async message => {
     await start(message, client)
   }
 
+  if (command === "split") {
+    if (!message.member!.roles.cache.find(x => x.name.toLowerCase().includes("mod"))) return message.reply("You don't have those premissions")
+    await split(message, client)
+  }
+
+  // if(command === "test"){
+  //   let c = await client.channels.cache.filter(c => c.type === "dm")
+
+  //   for(let i = 0; i < c.array().length!; i++){
+  //     let e = <Discord.TextChannel>client!.channels!.cache!.get(c.array()[i].id)!
+
+  //     let m = await e.messages.fetch({ limit: 1 }).then(message => console.log(message.first()?.content));
+      
+  //   }
+
+  // }
+
+  else if(command === "end"){
+    await end(client, message.channel.id)
+  }
+
   else if(command === "ping"){
     await message.channel.send(`🏓Latency is ${Date.now() - message.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
   }
 
   else if(command === "submit"){
       await submit(message, client)
+  }
+
+  else if(command === "matchstats"){
+
+    let match = await getMatch(message.mentions.channels.first()!.id!)
+
+    let c = <Discord.TextChannel>await client.channels.fetch(match.channelid)
+    await (<Discord.TextChannel>client.channels.cache.get("789201298104123414"))!.send(new Discord.MessageEmbed()
+    .setTitle(`${c.name}`)
+    .setColor("BLUE")
+    .addFields(
+
+        { name: `${(await client.users.cache.get(match.p1.userid)!).username} Meme Done:`, value: `${match.p1.memedone ? `Yes` : `No` }`, inline:true},
+        { name: 'Match Portion Done:', value: `${match.p1.donesplit ? `${match.split ? `Yes` : `Not a split match` }` : `No` }`, inline:true},
+        { name: 'Meme Link:', value: `${match.p1.memedone ?   `${match.p1.memelink}` : `No meme submitted yet` }`, inline:true},
+        { name: 'Time left', value: `${match.p1.donesplit ? `${match.p1.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p1.time)/60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up` }` }`, inline:true},
+        { name: '\u200B', value: '\u200B' },
+
+        { name: `${(await client.users.cache.get(match.p2.userid)!).username} Meme Done:`, value: `${match.p2.memedone ? `Yes` : `No` }`, inline:true},
+        { name: 'Match Portion Done:', value: `${match.p2.donesplit ? `${match.split ? `Yes` : `Not a split match` }` : `No` }`, inline:true},
+        { name: 'Meme Link:', value: `${match.p2.memedone ?   `${match.p2.memelink}` : `No meme submitted yet`}`, inline:true},
+        { name: 'Time left', value: `${match.p2.donesplit ? `${match.p2.memedone ? "Submitted meme" : `${60 - Math.floor(((Date.now() / 1000) - match.p2.time)/60)} mins left`}` : `${match.split ? `Hasn't started portion` : `Time up` }` }`, inline:true},
+        { name: '\u200B', value: '\u200B' },
+
+        {name: `Voting period:`, value: `${match.votingperiod ? `Yes` : `No`}`, inline:true},
+        {name: `Voting time:`, value: `${match.votingperiod ? `${(7200/60) - Math.floor((Math.floor(Date.now() / 1000) - match.votetime)/60)} mins left` : "Voting hasn't started"}`, inline:true}
+        
+    ))! 
   }
 
   else if(command === "cancel"){
